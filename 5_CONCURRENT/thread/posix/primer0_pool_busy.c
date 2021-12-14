@@ -37,6 +37,7 @@ static void* thr_prime(void* p){
         if (mark){
             printf("[%d][%d] is a primer\n", (int)p, i);
         }
+        mark = 1;
     }
 
     pthread_exit(NULL);
@@ -55,11 +56,6 @@ int main(){
         }
     }
 
-    printf("tid: %d\n", tid[0]);
-    printf("tid: %d\n", tid[1]);
-    printf("tid: %d\n", tid[2]);
-    printf("tid: %d\n", tid[3]);
-    printf("tid: %d\n", tid[4]);
 
     // 分配任务
     for(i = LEFT; i<=RIGHT;i++){
