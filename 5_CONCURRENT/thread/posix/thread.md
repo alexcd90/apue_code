@@ -22,7 +22,7 @@ ps -a -L
 
 信号和多线程小范围混用合适
 
-pthread();
+pthread_equal();
 
 ```c
 SYNOPSIS
@@ -64,7 +64,7 @@ SYNOPSIS
 
 1.thread 回填一个线程标识
 
-2 .attr指定属性 默认情况属性 **可以解决80%的问题**
+2.attr指定属性 默认情况属性 **可以解决80%的问题**
 
 3.void *(*start_routine) (void *) 这个是兄弟线程的函数 void* * 可以传各类地址
 
@@ -265,12 +265,12 @@ NAME
        — lock and unlock a mutex
 
 SYNOPSIS
-       #include <pthread.h>
+        #include <pthread.h>
 
 
-   int pthread_mutex_lock(pthread_mutex_t *mutex);    //阻塞 死等
-   int pthread_mutex_trylock(pthread_mutex_t *mutex);  //非阻塞
-   int pthread_mutex_unlock(pthread_mutex_t *mutex);
+        int pthread_mutex_lock(pthread_mutex_t *mutex);    //阻塞 死等
+        int pthread_mutex_trylock(pthread_mutex_t *mutex);  //非阻塞
+        int pthread_mutex_unlock(pthread_mutex_t *mutex);
 ```
 
 阻塞调用是指调用结果返回之前，当前线程会被挂起。调用线程只有在得到结果之后才会返回。

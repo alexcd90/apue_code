@@ -41,23 +41,23 @@ _r版本库函数是可重入
 ```c
     #include <time.h>
 
-   char *asctime(const struct tm *tm);
-   char *asctime_r(const struct tm *tm, char *buf);
+    char *asctime(const struct tm *tm);
+    char *asctime_r(const struct tm *tm, char *buf);
 
-   char *ctime(const time_t *timep);
-   char *ctime_r(const time_t *timep, char *buf);
+    char *ctime(const time_t *timep);
+    char *ctime_r(const time_t *timep, char *buf);
 
-   struct tm *gmtime(const time_t *timep);
-   struct tm *gmtime_r(const time_t *timep, struct tm *result);
+    struct tm *gmtime(const time_t *timep);
+    struct tm *gmtime_r(const time_t *timep, struct tm *result);
 
-   struct tm *localtime(const time_t *timep);
-   struct tm *localtime_r(const time_t *timep, struct tm *result); //多一个自己给定的参数，空间有自己分配，结果不会被信号终端干扰
+    struct tm *localtime(const time_t *timep);
+    struct tm *localtime_r(const time_t *timep, struct tm *result); //多一个自己给定的参数，空间有自己分配，结果不会被信号终端干扰
 ```
 
 ```c
-#include <string.h>
+    #include <string.h>
 
-       void *memcpy(void *dest, const void *src, size_t n);
+    void *memcpy(void *dest, const void *src, size_t n);
 
 DESCRIPTION
        The  memcpy()  function  copies n bytes from memory area src to
@@ -99,7 +99,6 @@ raise();
     //The  raise()  function sends a signal to the calling process or
     //thread.  In a single-threaded program it is equivalent to
 
-           
 	kill(getpid(), sig);
 
     //In a multithreaded program it is equivalent to
@@ -134,6 +133,7 @@ NAME
 
 SYNOPSIS
     #include <sys/time.h>
+
     int getitimer(int which, struct itimerval *curr_value);
     int setitimer(int which, const struct itimerval *new_value,
                  struct itimerval *old_value);
@@ -148,6 +148,7 @@ abort(); //终止，并会保存一个core dump的出错现场！
         abort - cause abnormal process termination
     
     SYNOPSIS
+
         #include <stdlib.h>
         void abort(void);
 ```
@@ -203,8 +204,8 @@ sigprocmask();
 ```c
     #include <signal.h>
 
-   /* Prototype for the glibc wrapper function */
-   int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+    /* Prototype for the glibc wrapper function */
+    int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 ```
 
 ### 9.扩展
@@ -218,6 +219,7 @@ NAME
 
 SYNOPSIS
     #include <signal.h>
+    
     int sigsuspend(const sigset_t *mask);
 ```
 
