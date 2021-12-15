@@ -11,8 +11,10 @@ static int num = 0;
 static pthread_mutex_t mutex_num = PTHREAD_MUTEX_INITIALIZER;
 
 static void* thr_prime(void* p){
-    int mark = 1, i;
+    
     while(1){
+        int mark = 1, i;
+
         pthread_mutex_lock(&mutex_num);
         while(num==0){
             pthread_mutex_unlock(&mutex_num);
@@ -37,7 +39,7 @@ static void* thr_prime(void* p){
         if (mark){
             printf("[%d][%d] is a primer\n", (int)p, i);
         }
-        mark = 1;
+        
     }
 
     pthread_exit(NULL);
