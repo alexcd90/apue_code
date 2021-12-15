@@ -9,6 +9,7 @@
 
 static int num = 0;
 static pthread_mutex_t mutex_num = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_num = PTHREAD_COND_INITIALIZER;
 
 static void* thr_prime(void* p){
     
@@ -17,9 +18,7 @@ static void* thr_prime(void* p){
 
         pthread_mutex_lock(&mutex_num);
         while(num==0){
-            pthread_mutex_unlock(&mutex_num);
-            sched_yield();
-            pthread_mutex_lock(&mutex_num);
+            pthread_cond_wait(&cond_num, &mutex_num);
         }
         if (num == -1){
             pthread_mutex_unlock(&mutex_num);
@@ -28,6 +27,7 @@ static void* thr_prime(void* p){
 
         i = num;
         num = 0;
+        pthread_cond_broadcast(&cond_num);
         pthread_mutex_unlock(&mutex_num);
 
         for(int j = 2; j <i/2;j++){
@@ -63,22 +63,20 @@ int main(){
     for(i = LEFT; i<=RIGHT;i++){
         pthread_mutex_lock(&mutex_num);
         while(num!=0){
-            pthread_mutex_unlock(&mutex_num);
-            sched_yield();
-            pthread_mutex_lock(&mutex_num);
+            pthread_cond_wait(&cond_num, &mutex_num);
         }
         num = i;
+        pthread_cond_signal(&cond_num);
         pthread_mutex_unlock(&mutex_num);
     }
 
     // 设置结束标示
     pthread_mutex_lock(&mutex_num);
     while(num!=0){
-        pthread_mutex_unlock(&mutex_num);
-        sched_yield();
-        pthread_mutex_lock(&mutex_num);
+        pthread_cond_wait(&cond_num, &mutex_num);
     }
     num = -1;
+    pthread_cond_broadcast(&cond_num);
     pthread_mutex_unlock(&mutex_num);
 
 
@@ -87,6 +85,7 @@ int main(){
     }
 
     pthread_mutex_destroy(&mutex_num);
+    pthread_cond_destroy(&cond_num);
     exit(0);
 
 }
