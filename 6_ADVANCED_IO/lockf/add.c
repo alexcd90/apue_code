@@ -8,7 +8,7 @@
 #define FILENAME "/tmp/out"
 #define LINESIZE 1024
 
-static void func_add()
+static void func_add(void)
 {
     FILE *fp;
     int fd;
