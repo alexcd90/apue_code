@@ -15,7 +15,7 @@
 
 static pthread_mutex_t mutex_job = PTHREAD_MUTEX_INITIALIZER;
 static pthread_once_t thread_once = PTHREAD_ONCE_INIT;
-static struct rel_job_st* job_max[REL_JOBMAX];
+static struct rel_job_st *job_max[REL_JOBMAX];
 
 enum
 {
@@ -163,7 +163,6 @@ static void module_load(void)
         fprintf(stderr, "pthread_create():%s\n", strerror(err));
         exit(1);
     }
-    
 }
 
 static int get_free_pos_unlock()
@@ -206,13 +205,12 @@ int rel_addjob(int fd1, int fd2)
     me->fsm21.state = STATE_R;
     me->fsm21.sfd = me->fd2;
     me->fsm21.dfd = me->fd1;
-    
 
     // 加锁数组job寻找位置
     pthread_mutex_lock(&mutex_job);
-    
+
     pos = get_free_pos_unlock();
-    
+
     if (pos < 0)
     {
         // 恢复状态，释放资源和锁

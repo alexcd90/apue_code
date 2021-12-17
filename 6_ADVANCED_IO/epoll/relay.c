@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-
+#include <sys/time.h>
+#include <sys/epoll.h>
 #define TTY1 "/dev/tty11"
 #define TTY2 "/dev/tty12"
 #define BUFSIZE 1024
@@ -14,6 +15,7 @@ enum
 {
     STATE_R = 1,
     STATE_W,
+    STATE_AUTO,
     STATE_Ex,
     STATE_T
 };
@@ -111,6 +113,13 @@ static void fsm_driver(struct fsm_st *fsm)
     }
 }
 
+static int max(int a, int b)
+{
+    if (a > b)
+        return a;
+    return b;
+}
+
 static void relay(int fd1, int fd2)
 {
 
@@ -132,11 +141,83 @@ static void relay(int fd1, int fd2)
     fsm21.dfd = fd1;
     fsm21.state = STATE_R;
 
+    // 创建epoll实例
+    int efd;
+    struct epoll_event ev;
+
+    efd = epoll_create(2);
+    if (efd < 0)
+    {
+        perror("epoll_create() failed.");
+        exit(1);
+    }
+
+    // epoll_ctl设置epoll_event
+    ev.data.fd = fd1;
+    ev.events = 0;
+    epoll_ctl(efd, EPOLL_CTL_ADD, fd1, &ev);
+
+    ev.data.fd = fd2;
+    ev.events = 0;
+    ev.events = 0;
+    epoll_ctl(efd, EPOLL_CTL_ADD, fd2, &ev);
+
     // 非终止状态无限循环状态集驱动
     while (fsm12.state != STATE_T || fsm21.state != STATE_T)
     {
-        fsm_driver(&fsm12);
-        fsm_driver(&fsm21);
+
+        ev.data.fd = fd1;
+        ev.events = 0;
+        // 根据状态集运行状态注册监听事件
+        if (fsm12.state == STATE_R)
+        {
+            ev.events |= EPOLLIN;
+        }
+
+        if (fsm21.state == STATE_W)
+        {
+            ev.events |= EPOLLOUT;
+        }
+        epoll_ctl(efd, EPOLL_CTL_MOD, fd1, &ev);
+
+        ev.data.fd = fd2;
+        ev.events = 0;
+
+        if (fsm21.state == STATE_R)
+        {
+            ev.events |= EPOLLIN;
+        }
+
+        if (fsm12.state == STATE_W)
+        {
+            ev.events |= EPOLLOUT;
+        }
+
+        epoll_ctl(efd, EPOLL_CTL_MOD, fd2, &ev);
+
+        // 状态小于auto的进入epoll_wait
+        if (fsm12.state < STATE_AUTO || fsm21.state < STATE_AUTO)
+        {
+            // epoll_wait轮询事件集合
+            if (epoll_wait(efd, &ev, 1, -1) < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+                perror("epoll_wait()");
+                exit(1);
+            }
+            // 根据事件集合推动状态
+            if ((ev.data.fd == fd1 && ev.events & EPOLLIN) || (ev.data.fd == fd2 && ev.events & EPOLLOUT) || fsm12.state > STATE_AUTO)
+            {
+                fsm_driver(&fsm12);
+            }
+            if ((ev.data.fd == fd2 && ev.events & EPOLLIN) || (ev.data.fd == fd1 && ev.events & EPOLLOUT) || fsm21.state > STATE_AUTO)
+            {
+                fsm_driver(&fsm21);
+            }
+        }
     }
 
     // 回复fcntl原始状态

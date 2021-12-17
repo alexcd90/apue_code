@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/time.h>
+#include <sys/select.h>
 
 #define TTY1 "/dev/tty11"
 #define TTY2 "/dev/tty12"
@@ -14,6 +16,7 @@ enum
 {
     STATE_R = 1,
     STATE_W,
+    STATE_AUTO,
     STATE_Ex,
     STATE_T
 };
@@ -111,6 +114,13 @@ static void fsm_driver(struct fsm_st *fsm)
     }
 }
 
+static int max(int a, int b)
+{
+    if (a > b)
+        return a;
+    return b;
+}
+
 static void relay(int fd1, int fd2)
 {
 
@@ -132,11 +142,56 @@ static void relay(int fd1, int fd2)
     fsm21.dfd = fd1;
     fsm21.state = STATE_R;
 
+    fd_set readsets;
+    fd_set writesets;
+
     // 非终止状态无限循环状态集驱动
     while (fsm12.state != STATE_T || fsm21.state != STATE_T)
     {
-        fsm_driver(&fsm12);
-        fsm_driver(&fsm21);
+        // 初始化读写集合
+        FD_ZERO(&readsets);
+        FD_ZERO(&writesets);
+
+        // 根据状态集运行状态注册监听事件
+        if (fsm12.state == STATE_R)
+        {
+            FD_SET(fsm12.sfd, &readsets);
+        }
+        if (fsm12.state == STATE_W)
+        {
+            FD_SET(fsm12.dfd, &writesets);
+        }
+        if (fsm21.state == STATE_R)
+        {
+            FD_SET(fsm21.sfd, &readsets);
+        }
+        if (fsm21.state == STATE_W)
+        {
+            FD_SET(fsm21.dfd, &writesets);
+        }
+        // 状态小于auto的进入select
+        if (fsm12.state < STATE_AUTO || fsm21.state < STATE_AUTO)
+        {
+            // select轮询事件集合
+            if (select(max(fd1, fd2) + 1, &readsets, &writesets, NULL, NULL) < 0)
+            {
+                if (errno == EAGAIN)
+                {
+                    continue;
+                }
+                perror("select()");
+                exit(1);
+            }
+            // 根据事件集合推动状态
+            if (FD_ISSET(fsm12.sfd, &readsets) || FD_ISSET(fsm12.dfd, &writesets) || fsm12.state > STATE_AUTO)
+            {
+                fsm_driver(&fsm12);
+            }
+            if (FD_ISSET(fsm21.sfd, &readsets) || FD_ISSET(fsm21.dfd, &writesets) || fsm21.state > STATE_AUTO)
+            {
+                fsm_driver(&fsm21);
+            }
+        }
     }
 
     // 回复fcntl原始状态

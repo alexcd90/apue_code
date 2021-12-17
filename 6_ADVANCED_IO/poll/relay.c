@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-
+#include <sys/time.h>
+#include <poll.h>
 #define TTY1 "/dev/tty11"
 #define TTY2 "/dev/tty12"
 #define BUFSIZE 1024
@@ -14,6 +15,7 @@ enum
 {
     STATE_R = 1,
     STATE_W,
+    STATE_AUTO,
     STATE_Ex,
     STATE_T
 };
@@ -111,6 +113,13 @@ static void fsm_driver(struct fsm_st *fsm)
     }
 }
 
+static int max(int a, int b)
+{
+    if (a > b)
+        return a;
+    return b;
+}
+
 static void relay(int fd1, int fd2)
 {
 
@@ -132,11 +141,60 @@ static void relay(int fd1, int fd2)
     fsm21.dfd = fd1;
     fsm21.state = STATE_R;
 
+    // pfd数组，设置对应fd
+    struct pollfd pfd[2];
+
+    pfd[0].fd = fd1;
+    pfd[1].fd = fd2;
+
     // 非终止状态无限循环状态集驱动
     while (fsm12.state != STATE_T || fsm21.state != STATE_T)
     {
-        fsm_driver(&fsm12);
-        fsm_driver(&fsm21);
+        // 初始化读写集合
+
+        pfd[0].events = 0;
+        pfd[1].events = 0;
+
+        // 根据状态集运行状态注册监听事件
+        if (fsm12.state == STATE_R)
+        {
+            pfd[0].events |= POLLIN;
+        }
+        if (fsm12.state == STATE_W)
+        {
+            pfd[1].events |= POLLOUT;
+        }
+        if (fsm21.state == STATE_R)
+        {
+            pfd[1].events |= POLLIN;
+        }
+        if (fsm21.state == STATE_W)
+        {
+            pfd[0].events |= POLLOUT;
+        }
+        // 状态小于auto的进入select
+        if (fsm12.state < STATE_AUTO || fsm21.state < STATE_AUTO)
+        {
+            // select轮询事件集合
+            if (poll(pfd, 2, -1) < 0)
+            {
+                if (errno == EAGAIN)
+                {
+                    continue;
+                }
+                perror("poll()");
+                exit(1);
+            }
+            // 根据事件集合推动状态
+            if (pfd[0].revents & POLLIN || pfd[0].revents & POLLOUT || fsm12.state > STATE_AUTO)
+            {
+                fsm_driver(&fsm12);
+            }
+            if (pfd[1].revents & POLLIN || pfd[1].revents & POLLOUT || fsm21.state > STATE_AUTO)
+            {
+                fsm_driver(&fsm21);
+            }
+        }
     }
 
     // 回复fcntl原始状态
